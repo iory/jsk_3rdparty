@@ -8,6 +8,8 @@ import rospy
 
 if __name__ == '__main__':
     speaking_rate = rospy.get_param('~speaking_rate', 1.0)
+    print('[Text2Wave] Speaking rate is {}'.format(speaking_rate))
+    print('[Text2Wave] namespace "{}"'.format(rospy.get_namespace()))
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-eval', '--evaluate')
     parser.add_argument('-o', '--output')
