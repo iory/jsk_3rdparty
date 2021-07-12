@@ -87,9 +87,11 @@ if __name__ == '__main__':
 
     # Instantiates a client
     client = TextToSpeechClient()
+
     with open(args.text, 'rb') as f:
-        synthesis_input = SynthesisInput(
-            text=f.readline())
+        speach_text = f.readline()
+    synthesis_input = SynthesisInput(
+        text=speach_text)
 
     # English as default
     language_code = 'en-US'
@@ -109,6 +111,8 @@ if __name__ == '__main__':
             '--'.join([md5, language_code, name, str(speaking_rate)])
             + '.mp3')
         if os.path.exists(cache_filename):
+            print('[Text2Wave] Using cached sound file ({}) for {}'
+                  .format(cache_filename, speach_text.decode('utf-8')))
             shutil.copy(cache_filename, args.output)
             sys.exit(0)
 
