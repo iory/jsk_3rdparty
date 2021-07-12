@@ -9,7 +9,6 @@ import sys
 
 from google.cloud.texttospeech import TextToSpeechClient
 import pkg_resources
-import rospy
 
 
 # The submodules enums and types have been removed from v2.0.0
@@ -37,6 +36,11 @@ default_voice_name = os.environ.get(
     'GOOGLE_CLOUD_TEXTTOSPEECH_VOICE_NAME', None)
 default_language_code = os.environ.get(
     'GOOGLE_CLOUD_TEXTTOSPEECH_LANGUAGE_CODE', None)
+default_language_code = os.environ.get(
+    'GOOGLE_CLOUD_TEXTTOSPEECH_LANGUAGE_CODE', None)
+speaking_rate = float(os.environ.get(
+    'GOOGLE_CLOUD_TEXTTOSPEECH_SPEAKING_RATE', 1.0))
+speaking_rate = min(max(speaking_rate, 0.25), 4.0)
 
 
 def get_cache_dir():
@@ -82,7 +86,6 @@ def checksum_md5(filename, blocksize=8192):
 
 
 if __name__ == '__main__':
-    speaking_rate = rospy.get_param('~speaking_rate', 1.0)
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-eval', '--evaluate')
     parser.add_argument('-o', '--output')
