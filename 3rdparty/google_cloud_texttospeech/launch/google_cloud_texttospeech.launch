@@ -16,6 +16,10 @@
        doc="English speaking speed (default: 100)" />
   <arg name="japanese_speed" default="100"
        doc="Japanese speaking speed (default: 100)" />
+  <arg name="english_voice_name" default="en-US-Wavenet-A"
+       doc="English voice name (default: en-US-Wavenet-A)" />
+  <arg name="japanese_voice_name" default="ja-JP-Wavenet-A"
+       doc="Japanese voice name (default: ja-JP-Wavenet-A)" />
   <arg name="cache" default="false"
        doc="Cache generated sound file (default: false)" />
 
@@ -30,6 +34,8 @@
     <env name="PYTHONIOENCODING" value="utf-8" />
     <env name="GOOGLE_APPLICATION_CREDENTIALS" value="$(arg credential)" />
     <env name="GOOGLE_CLOUD_TEXTTOSPEECH_CACHE_ENABLED" value="$(arg cache)" />
+    <env name="GOOGLE_CLOUD_TEXTTOSPEECH_VOICE_NAME" value="$(arg english_voice_name)" />
+    <env name="GOOGLE_CLOUD_TEXTTOSPEECH_LANGUAGE_CODE" value="en-US" />
     <rosparam subst_value="true">
       speaking_rate: $(arg english_speed)
     </rosparam>
@@ -46,6 +52,8 @@
     <env name="PYTHONIOENCODING" value="utf-8" />
     <env name="GOOGLE_APPLICATION_CREDENTIALS" value="$(arg credential)" />
     <env name="GOOGLE_CLOUD_TEXTTOSPEECH_CACHE_ENABLED" value="$(arg cache)" />
+    <env name="GOOGLE_CLOUD_TEXTTOSPEECH_VOICE_NAME" value="$(arg japanese_voice_name)" />
+    <env name="GOOGLE_CLOUD_TEXTTOSPEECH_LANGUAGE_CODE" value="ja-JP" />
     <rosparam subst_value="true">
       speaking_rate: $(arg japanese_speed)
     </rosparam>
