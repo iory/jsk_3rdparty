@@ -31,8 +31,9 @@ else:
     VoiceSelectionParams = google.cloud.texttospeech.types.VoiceSelectionParams
 
 cache_enabled = os.environ.get(
-    'GOOGLE_CLOUD_TEXTTOSPEECH_CACHE_ENABLED', False)
-cache_enabled = cache_enabled or cache_enabled == 'true'
+    'GOOGLE_CLOUD_TEXTTOSPEECH_CACHE_ENABLED', True)
+cache_enabled = cache_enabled is True \
+    or cache_enabled == 'true'  # for launch env tag.
 
 
 def get_cache_dir():

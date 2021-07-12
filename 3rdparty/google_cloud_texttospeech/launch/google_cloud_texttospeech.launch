@@ -16,8 +16,8 @@
        doc="English speaking speed (default: 100)" />
   <arg name="japanese_speed" default="100"
        doc="Japanese speaking speed (default: 100)" />
-  <arg name="cache" default="false"
-       doc="Cache generated sound file (default: false)" />
+  <arg name="cache" default="true"
+       doc="Cache generated sound file (default: true)" />
 
   <node name="sound_play" if="$(arg use_english)"
         pkg="sound_play" type="soundplay_node.py"
