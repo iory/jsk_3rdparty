@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # Copyright: Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp>
 
+import httplib2
+
 import actionlib
 import rospy
 import speech_recognition as SR
@@ -233,7 +235,13 @@ class ROSSpeechRecognition(object):
         elif self.engine == Config.SpeechRecognition_IBM:
             recog_func = self.recognizer.recognize_ibm
 
-        return recog_func(audio_data=audio, language=self.language, **self.args)
+        while True:
+            try:
+                result = recog_func(
+                    audio_data=audio, language=self.language, **self.args)
+                return result
+            except httplib2.ServerNotFoundError:
+                rospy.loginfo('httplib2.ServerNotFoundError occurred. Retry.')
 
     def audio_cb(self, _, audio):
         try:
