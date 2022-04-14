@@ -70,6 +70,40 @@ class RNNoise(object):
             denoised_audio = denoised_audio.set_frame_rate(sample_rate)
         return denoised_audio
 
+
+    def filter_with_audio(self, audio, another_audio, sample_rate=None, voice_prob_threshold=0.0, save_source_sample_rate=True):
+        frames, source_sample_rate = self.__get_frames(audio, sample_rate)
+        another_frames, another_source_sample_rate = self.__get_frames(
+            another_audio, sample_rate)
+        if not save_source_sample_rate:
+            source_sample_rate = None
+
+        denoised_audio = self.__filter_frames_with(
+            frames, another_frames, voice_prob_threshold, source_sample_rate)
+
+        if isinstance(audio, AudioSegment):
+            return denoised_audio
+        else:
+            return denoised_audio.raw_data
+
+    def __filter_frames_with(self, frames, another_frames, voice_prob_threshold=0.0, sample_rate=None):
+        denoised_frames_with_probability = [self.filter_frame(frame) for frame in frames]
+        another_denoised_frames_with_probability = [self.filter_frame(frame) for frame in another_frames]
+        denoised_frames = []
+        for frame_with_prob, another_frame_with_prob in zip(denoised_frames_with_probability,
+                                                            another_denoised_frames_with_probability):
+            if frame_with_prob[0] >= voice_prob_threshold:
+                denoised_frames.append(another_frame_with_prob[1])
+            else:
+                denoised_frames.append(len(another_frame_with_prob[1]) * b'\x00')
+        denoised_audio_bytes = b''.join(denoised_frames)
+
+        denoised_audio = AudioSegment(data=denoised_audio_bytes, sample_width=self.sample_width, frame_rate=self.sample_rate, channels=self.channels)
+
+        if sample_rate:
+            denoised_audio = denoised_audio.set_frame_rate(sample_rate)
+        return denoised_audio
+
     def __get_frames(self, audio, sample_rate=None):
         if isinstance(audio, AudioSegment):
             sample_rate = source_sample_rate = audio.frame_rate

@@ -78,21 +78,45 @@
     <param name="sample_rate" value="$(arg sample_rate)" />
   </node>
 
+  <node name="rnnoise"
+        pkg="rnnoise" type="rnnoise_node.py"
+        output="screen" >
+    <remap from="~audio" to="audio" />
+  </node>
+
   <!-- sound play -->
   <node name="sound_play" pkg="sound_play" type="soundplay_node.py"
         machine="$(arg machine)"
         respawn="$(arg respawn)"
         if="$(arg launch_sound_play)" />
 
-  <!-- ros / julius interface -->
-  <node name="julius_client_isolated"
+  <!-- <!-\- ros / julius interface -\-> -->
+  <!-- <node name="julius_client_isolated" -->
+  <!--       pkg="julius_ros" type="julius_client.py" -->
+  <!--       machine="$(arg machine)" -->
+  <!--       respawn="$(arg respawn)" -->
+  <!--       output="screen"> -->
+  <!--   <remap from="sound_play" to="$(arg sound_play_topic)" /> -->
+  <!--   <remap from="speech_to_text" to="$(arg speech_to_text_topic)" /> -->
+  <!--   <rosparam subst_value="true"> -->
+  <!--     use_isolated_word: true -->
+  <!--     audio_port: $(arg audio_port) -->
+  <!--     module_port: $(arg module_port) -->
+  <!--     max_connection_retry: $(arg max_connection_retry) -->
+  <!--     threshold: $(arg default_threshold) -->
+  <!--     start_signal_action_timeout: $(arg start_signal_action_timeout) -->
+  <!--   </rosparam> -->
+  <!-- </node> -->
+
+  <node name="julius_client_isolated_noise"
         pkg="julius_ros" type="julius_client.py"
         machine="$(arg machine)"
         respawn="$(arg respawn)"
         output="screen">
     <remap from="sound_play" to="$(arg sound_play_topic)" />
-    <remap from="speech_to_text" to="$(arg speech_to_text_topic)" />
+    <remap from="speech_to_text" to="speech_to_text_noise" />
     <rosparam subst_value="true">
+      audio_topic: /rnnoise/output
       use_isolated_word: true
       audio_port: $(arg audio_port)
       module_port: $(arg module_port)

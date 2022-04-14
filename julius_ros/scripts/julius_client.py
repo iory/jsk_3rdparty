@@ -53,7 +53,7 @@ class JuliusClient(object):
         max_retry = rospy.get_param("~max_connection_retry", 0)
 
         self.module = ModuleClient(host, module_port, max_retry, self.encoding)
-        self.audio = AudioTransport(host, audio_port, max_retry, "audio")
+        self.audio = AudioTransport(host, audio_port, max_retry, rospy.get_param('~audio_topic', '~audio'))
 
         rospy.on_shutdown(self.shutdown_cb)
         self.module.on_received_data(self.julius_cb)
