@@ -1,4 +1,5 @@
 <launch>
+  <arg name="launch_sound_play" default="false" doc="Launch sound_play node to speak" />
   <arg name="launch_audio_capture" default="true" doc="Launch audio_capture node to publish audio topic from microphone" />
 
   <arg name="audio_topic" default="/audio" doc="Name of audio topic captured from microphone" />
@@ -8,8 +9,8 @@
   <arg name="sample_rate" default="16000" doc="Frame rate of audio topic and microphone. '$ pactl list short sinks' to check your hardware"/>
   <arg name="device" default="plughw:2,0" doc="Card and device number of microphone (e.g. hw:0,0). you can check card number and device number by '$ arecord -l', then uses hw:[card number],[device number]" />
   <arg name="engine" default="Google" doc="Speech to text engine. TTS engine, Google, GoogleCloud, Sphinx, Wit, Bing Houndify, IBM" />
-  <arg name="language" default="en-US" doc="Speech to text language. For Japanese, set ja-JP." />
-  <arg name="continuous" default="false" doc="If false, /speech_recognition service is published. If true, /Tablet/voice topic is published." />
+  <arg name="language" default="ja-JP" doc="Speech to text language. For Japanese, set ja-JP." />
+  <arg name="continuous" default="true" doc="If false, /speech_recognition service is published. If true, /Tablet/voice topic is published." />
 
   <!-- audio capture from microphone -->
   <node name="audio_capture"
@@ -31,5 +32,60 @@
         output="screen" >
     <remap from="~audio" to="$(arg audio_topic)" />
   </node>
+
+  <!-- <node name="speech_recognition" -->
+  <!--       pkg="ros_speech_recognition" type="speech_recognition_node.py" -->
+  <!--       respawn="true" -->
+  <!--       output="screen" -->
+  <!--       clear_params="true" > -->
+  <!--   <rosparam subst_value="true"> -->
+  <!--     audio_topic: $(arg audio_topic) -->
+  <!--     voice_topic: $(arg voice_topic) -->
+  <!--     n_channel: $(arg n_channel) -->
+  <!--     depth: $(arg depth) -->
+  <!--     sample_rate: $(arg sample_rate) -->
+  <!--     engine: $(arg engine) -->
+  <!--     language: $(arg language) -->
+  <!--     continuous: $(arg continuous) -->
+  <!--     enable_sound_effect: $(arg launch_sound_play) -->
+  <!--     dynamic_energy_threshold: false -->
+  <!--     energy_threshold: 300 -->
+  <!--   </rosparam> -->
+  <!-- </node> -->
+
+  <node name="speech_recognition_noise"
+        pkg="ros_speech_recognition" type="speech_recognition_node.py"
+        respawn="true"
+        output="screen"
+        clear_params="true" >
+    <rosparam subst_value="true">
+      audio_topic: /rnnoise/output
+      voice_topic: $(arg voice_topic)_noise
+      n_channel: $(arg n_channel)
+      depth: $(arg depth)
+      sample_rate: $(arg sample_rate)
+      engine: $(arg engine)
+      language: $(arg language)
+      continuous: $(arg continuous)
+      enable_sound_effect: $(arg launch_sound_play)
+      dynamic_energy_threshold: false
+      energy_threshold: 300
+      non_speaking_duration: 0.0
+    </rosparam>
+  </node>
+
+
+  <node name="speech_recognition_text"
+        pkg="rostopic" type="rostopic"
+        args="echo $(arg voice_topic) --filter 'print(m.transcript[0])'"
+        output="screen" >
+  </node>
+
+<node name="speech_recognition_text_noise"
+        pkg="rostopic" type="rostopic"
+        args="echo $(arg voice_topic)_noise --filter 'print(m.transcript[0])'"
+        output="screen" >
+  </node>
+
 
 </launch>

@@ -3,6 +3,7 @@
 # Copyright: Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp>
 
 import actionlib
+import os.path as osp
 import rospy
 import speech_recognition as SR
 from ros_speech_recognition.recognize_google_cloud import RecognizerEx
@@ -257,6 +258,12 @@ class ROSSpeechRecognition(object):
         try:
             rospy.logdebug("Waiting for result... (Sent %d bytes)" % len(audio.get_raw_data()))
             result = self.recognize(audio)
+            from eos import makedirs
+            import eos
+            base_dir = osp.join(osp.expanduser('~/'), 'speech_recgnition_debug')
+            makedirs(base_dir)
+            with open(osp.join(base_dir, '{}.wav'.format(eos.current_time_str())), 'wb') as f:
+                f.write(audio.get_wav_data())
             self.play_sound("recognized", 0.05)
             rospy.loginfo("Result: %s" % result.encode('utf-8'))
             self.play_sound("success", 0.1)

@@ -33,7 +33,7 @@ class RNNoiseNode(object):
         n_frame = (len(audio_msg.data) // sample_width) // n_channel
         required_frame_count = int(buffer_size_s * sample_rate)
         self.audio_buffer += audio_msg.data
-        voice_prob_threshold = 0.8
+        voice_prob_threshold = 0.6
         step = required_frame_count * n_channel * sample_width
         i = 0
         # print(len(self.audio_buffer))
@@ -42,7 +42,6 @@ class RNNoiseNode(object):
                 self.audio_buffer[i - step:i],
                 sample_rate=sample_rate,
                 voice_prob_threshold=voice_prob_threshold)
-            print(len(denoised_audio))
             self.pub.publish(AudioData(data=denoised_audio))
         self.audio_buffer = self.audio_buffer[i:]
 
