@@ -1,0 +1,25 @@
+<package>
+  <name>rnnoise</name>
+  <version>0.0.1</version>
+  <description>RNNoise</description>
+  <maintainer email="yanokura@jsk.imi.u-tokyo.ac.jp">Iori Yanokura</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/rnnoise</url>
+
+  <author>Iori Yanokura</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>rospack</build_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>mk</build_depend>
+  <build_depend>rsync</build_depend>
+  <build_depend>unzip</build_depend>
+  <build_depend>wget</build_depend>
+  <run_depend>rsync</run_depend>
+  <run_depend>unzip</run_depend>
+  <run_depend>wget</run_depend>
+
+</package>
