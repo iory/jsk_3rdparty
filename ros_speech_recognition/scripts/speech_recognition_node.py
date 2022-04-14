@@ -25,6 +25,12 @@ from dynamic_reconfigure.server import Server
 from ros_speech_recognition.cfg import SpeechRecognitionConfig as Config
 
 
+def match_target_amplitude(sound, target_dBFS):
+    change_in_dBFS = target_dBFS - sound.dBFS
+    return sound.apply_gain(change_in_dBFS)
+
+
+
 class ROSAudio(SR.AudioSource):
     def __init__(self, topic_name="audio", depth=16, n_channel=1,
                  sample_rate=16000, chunk_size=1024, buffer_size=10240):
@@ -116,6 +122,7 @@ class ROSSpeechRecognition(object):
     def __init__(self):
         self.default_duration = rospy.get_param("~duration", 10.0)
         self.engine = None
+        self.suffix = rospy.get_param('~suffix', '')
         self.recognizer = RecognizerEx() # Use custom Recognizer to support exteded API
         self.audio = ROSAudio(topic_name=rospy.get_param("~audio_topic", "audio"),
                               depth=rospy.get_param("~depth", 16),
@@ -257,13 +264,30 @@ class ROSSpeechRecognition(object):
             return
         try:
             rospy.logdebug("Waiting for result... (Sent %d bytes)" % len(audio.get_raw_data()))
-            result = self.recognize(audio)
             from eos import makedirs
             import eos
             base_dir = osp.join(osp.expanduser('~/'), 'speech_recgnition_debug')
             makedirs(base_dir)
-            with open(osp.join(base_dir, '{}.wav'.format(eos.current_time_str())), 'wb') as f:
+            wave_path = osp.join(base_dir, '{}{}.wav'.format(
+                eos.current_time_str(),
+                self.suffix))
+            with open(wave_path, 'wb') as f:
                 f.write(audio.get_wav_data())
+            from pydub import AudioSegment
+            from pydub import effects
+            seg = AudioSegment.from_wav(wave_path)
+            # normalized_sound = match_target_amplitude(seg, -20.0)
+            normalized_sound = effects.normalize(seg, 1.0)
+            # result = self.recognize(audio)
+            tmp = SR.AudioData(normalized_sound.raw_data,
+                               sample_rate=normalized_sound.frame_rate,
+                               sample_width=normalized_sound.sample_width)
+            result = self.recognize(tmp)
+            from pathlib import Path
+            hoge = Path(wave_path)
+            wave_normalized_path = hoge.parent / '{}_norm.wav'.format(hoge.stem)
+            with open(wave_normalized_path, 'wb') as f:
+                f.write(tmp.get_wav_data())
             self.play_sound("recognized", 0.05)
             rospy.loginfo("Result: %s" % result.encode('utf-8'))
             self.play_sound("success", 0.1)
@@ -280,6 +304,8 @@ class ROSSpeechRecognition(object):
             rospy.logerr("Failed to recognize: %s" % str(e))
         except:
             rospy.logerr("Unexpected error: %s" % str(sys.exc_info()))
+        import os
+        os.remove(wave_path)
         self.play_sound("timeout", 0.1)
 
     def start_speech_recognition(self):
