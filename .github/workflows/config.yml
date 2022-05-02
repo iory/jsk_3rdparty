@@ -20,19 +20,23 @@ jobs:
             ROS_PARALLEL_TEST_JOBS: "-j8"
             CATKIN_PARALLEL_JOBS: "-i"
             EXTRA_DEB : "python-lxml"
+            LC_ALL : C.UTF-8
           - ROS_DISTRO: melodic
             CONTAINER: ubuntu:18.04
             ROS_PARALLEL_TEST_JOBS: "-j8"
             CATKIN_PARALLEL_JOBS: "-i"
+            LC_ALL : C.UTF-8
           - ROS_DISTRO: noetic
             CONTAINER: ubuntu:20.04
             ROS_PARALLEL_TEST_JOBS: "-j8"
             CATKIN_PARALLEL_JOBS: "-i"
+            LC_ALL : C.UTF-8
           - ROS_DISTRO: noetic
             CONTAINER: ubuntu:20.04
             ROS_PARALLEL_TEST_JOBS: "-j8"
             CATKIN_PARALLEL_JOBS: "-i"
             USE_DEB : false
+            LC_ALL : C.UTF-8
 
 
     container: ${{ matrix.CONTAINER }}
@@ -73,7 +77,7 @@ jobs:
           xhost +local:root
 
       - name: Run jsk_travis
-        uses: jsk-ros-pkg/jsk_travis@master
+        uses: iory/jsk_travis@utf-8
         with:
           ROS_PARALLEL_JOBS : ${{ matrix.ROS_PARALLEL_JOBS }}
           CATKIN_PARALLEL_JOBS : ${{ matrix.CATKIN_PARALLEL_JOBS }}
@@ -103,7 +107,7 @@ jobs:
           git checkout -qf $GITHUB_SHA || (git fetch -q origin +$GITHUB_REF; git checkout -qf FETCH_HEAD)
           git submodule update --init .travis
       - name: Run jsk_travis
-        uses: jsk-ros-pkg/jsk_travis@master
+        uses: iory/jsk_travis@utf-8
         with:
           EXTRA_DEB : "python-lxml"
           ROS_DISTRO : kinetic
