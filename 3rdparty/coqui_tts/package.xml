@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="1">
+  <name>coqui_tts</name>
+  <version>0.0.1</version>
+  <description>The coqui text to speech package</description>
+
+  <maintainer email="iori.yanokura@gmail.com">Iori Yanokura</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>python3-setuptools</buildtool_depend>
+
+  <build_depend>catkin_virtualenv</build_depend>
+
+  <run_depend>sound_play</run_depend>
+
+  <export>
+    <pip_requirements>requirements.txt</pip_requirements>
+  </export>
+
+</package>

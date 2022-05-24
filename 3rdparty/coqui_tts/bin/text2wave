@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
+import argparse
+import os
+import subprocess
+import sys
+import time
+
+import requests
+
+
+COQUI_TEXTTOSPEECH_URL = os.environ.get(
+    'COQUI_TEXTTOSPEECH_URL', 'localhost')
+COQUI_TEXTTOSPEECH_PORT = os.environ.get(
+    'COQUI_TEXTTOSPEECH_PORT', 50023)
+
+
+def convert_to_str(x):
+    if isinstance(x, str):
+        pass
+    elif isinstance(x, bytes):
+        x = x.decode('utf-8')
+    else:
+        raise ValueError(
+            'Invalid input x type: {}'
+            .format(type(x)))
+    return x
+
+
+def request_synthesis(sentence, output_path):
+    headers = {
+        'accept': '*/*',
+        'content-type': 'application/x-www-form-urlencoded',
+    }
+    params = {'text': convert_to_str(sentence)}
+
+    url = 'http://{}:{}/tts'.format(
+        COQUI_TEXTTOSPEECH_URL,
+        COQUI_TEXTTOSPEECH_PORT)
+    retry_count = 10
+    succ = False
+    for _ in range(retry_count):
+        try:
+            response = requests.post(
+                url,
+                params=params, headers=headers)
+        except requests.exceptions.ConnectionError:
+            print('[Text2Wave] Requests to COQUI TTS server failed. Waiting.')
+            time.sleep(1.0)
+            continue
+        succ = True
+        break
+    if succ is False:
+        print('[Text2Wave] Requests to COQUI TTS server failed.')
+        sys.exit(1)
+    with open(output_path, 'wb') as f:
+        f.write(response.content)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-eval', '--evaluate')
+    parser.add_argument('-o', '--output')
+    parser.add_argument('text')
+    args = parser.parse_args()
+
+    with open(args.text, 'rb') as f:
+        speech_text = f.readline()
+
+    if isinstance(speech_text, bytes):
+        speech_text = speech_text.decode('utf-8')
+    request_synthesis(speech_text, args.output)

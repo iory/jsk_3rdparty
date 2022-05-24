@@ -1,0 +1,4 @@
+TTS @ git+https://github.com/coqui-ai/TTS@v0.6.2_models
+fastapi
+pydub
+uvicorn

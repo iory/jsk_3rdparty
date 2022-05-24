@@ -1,0 +1,29 @@
+<launch>
+  <machine name="localhost" address="localhost" />
+  <arg name="sound_play_node_name" default="sound_play" />
+  <arg name="sound_topic_name" default="robotsound" />
+
+  <arg name="sound_play_machine" default="localhost"
+       doc="Machine to run sound_play node (default: localhost)" />
+  <arg name="sound_play_respawn" default="true"
+       doc="Respawn sound_play node or not (default: true)" />
+
+  <node name="coqui_server"
+        pkg="coqui_tts" type="coqui_tts_server.py"
+
+        output="screen" >
+  </node>
+<!-- respawn="$(arg sound_play_respawn)" -->
+
+  <node name="$(arg sound_play_node_name)"
+        pkg="sound_play" type="soundplay_node.py"
+        respawn="$(arg sound_play_respawn)"
+        machine="$(arg sound_play_machine)"
+        output="screen" >
+    <remap from="robotsound" to="$(arg sound_topic_name)"/>
+    <remap from="sound_play" to="$(arg sound_topic_name)"/>
+    <env name="PATH" value="$(find coqui_tts)/bin:$(env PATH)" />
+    <env name="PYTHONIOENCODING" value="utf-8" />
+  </node>
+
+</launch>
