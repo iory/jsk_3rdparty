@@ -48,7 +48,7 @@ class Tweet(object):
                 rospy.loginfo(
                     rospy.get_name() + " tweet %s with file %s",
                     message, filename)
-                ret = self.api.post_media(message[0:116], filename)
+                ret = self.api.post_media(message, filename)
             else:
                 rospy.logerr(rospy.get_name() + " %s could not find", filename)
 
@@ -61,13 +61,13 @@ class Tweet(object):
                 rospy.loginfo(
                     rospy.get_name() + " tweet %s with base64 image %s",
                     message, image[0:128])
-                ret = self.api.post_media(message[0:116], image)
+                ret = self.api.post_media(message, image)
             else:
                 rospy.logerr(rospy.get_name() + " %s is not base64 string", image)
 
         # post message if not media found
         if m == None:
-            ret = self.api.post_update(message[0:140])
+            ret = self.api.post_update(message)
 
         # show results
         if ret and 'errors' in ret:
