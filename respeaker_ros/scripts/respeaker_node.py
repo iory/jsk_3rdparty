@@ -3,10 +3,12 @@
 # Author: furushchev <furushchev@jsk.imi.i.u-tokyo.ac.jp>
 
 import angles
+from distutils.version import LooseVersion
 from contextlib import contextmanager
 import usb.core
 import usb.util
 import pyaudio
+import pkg_resources
 import math
 import numpy as np
 import tf.transformations as T
@@ -18,12 +20,9 @@ import time
 from audio_common_msgs.msg import AudioData
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool, Int32, ColorRGBA
+import diagnostic_updater
+from diagnostic_msgs.msg import DiagnosticStatus
 from dynamic_reconfigure.server import Server
-try:
-    from pixel_ring import usb_pixel_ring_v2
-except IOError as e:
-    rospy.logerr(e)
-    raise RuntimeError("Check the device is connected and recognized")
 
 try:
     from respeaker_ros.cfg import RespeakerConfig
@@ -110,17 +109,58 @@ class RespeakerInterface(object):
     TIMEOUT = 100000
 
     def __init__(self):
+        self.connect()
+
+    def connect(self):
+        self._need_reconnect = True
+        self._connected = True
         self.dev = usb.core.find(idVendor=self.VENDOR_ID,
                                  idProduct=self.PRODUCT_ID)
         if not self.dev:
-            raise RuntimeError("Failed to find Respeaker device")
+            # https://wiki.ros.org/rospy/Overview/Logging#Logging_Periodically
+            try:
+                rospy.logwarn_throttle_identical(
+                    10, "Failed to find Respeaker device")
+            # For kinetic or older (logwarn_throttle_identical is not defined)
+            except AttributeError:
+                rospy.logwarn("Failed to find Respeaker device")
+            self._connected = False
+            return False
+
         rospy.loginfo("Initializing Respeaker device")
         self.dev.reset()
-        self.pixel_ring = usb_pixel_ring_v2.PixelRing(self.dev)
-        self.set_led_think()
+        try:
+            from pixel_ring import usb_pixel_ring_v2
+            self.pixel_ring = usb_pixel_ring_v2.PixelRing(self.dev)
+        except (IOError, usb.core.USBError):
+            self._connected = False
+            rospy.logerr("Check the device is connected and recognized")
+            return False
+        try:
+            self.set_led_think()
+        except usb.core.USBError:
+            self._connected = False
+            rospy.logerr("The device seems to be disconnected.")
+            return False
         time.sleep(5)  # it will take 5 seconds to re-recognize as audio device
-        self.set_led_trace()
+        try:
+            self.set_led_trace()
+        except usb.core.USBError:
+            self._connected = False
+            rospy.logerr("The device seems to be disconnected.")
+            return False
         rospy.loginfo("Respeaker device initialized (Version: %s)" % self.version)
+        return True
+
+    def reconnect(self):
+        if (self._connected or self.connect()) is False:
+            self.connect()
+
+    @property
+    def connected(self):
+        value = self.read('DOAANGLE', exec_reconnect=False)
+        self._connected = value is not None
+        return self._connected
 
     def __del__(self):
         try:
@@ -131,6 +171,7 @@ class RespeakerInterface(object):
             self.dev = None
 
     def write(self, name, value):
+        self.reconnect()
         try:
             data = PARAMETERS[name]
         except KeyError:
@@ -147,11 +188,20 @@ class RespeakerInterface(object):
         else:
             payload = struct.pack(b'ifi', data[1], float(value), 0)
 
-        self.dev.ctrl_transfer(
-            usb.util.CTRL_OUT | usb.util.CTRL_TYPE_VENDOR | usb.util.CTRL_RECIPIENT_DEVICE,
-            0, 0, id, payload, self.TIMEOUT)
+        try:
+            self.dev.ctrl_transfer(
+                usb.util.CTRL_OUT | usb.util.CTRL_TYPE_VENDOR | usb.util.CTRL_RECIPIENT_DEVICE,
+                0, 0, id, payload, self.TIMEOUT)
+            self._connected = True
+        except usb.core.USBError as e:
+            rospy.logerr("Respeaker is not connected. {}".format(str(e)))
+            self._connected = False
 
-    def read(self, name):
+    def read(self, name, exec_reconnect=True):
+        if exec_reconnect:
+            self.reconnect()
+        if self.dev is None:
+            return
         try:
             data = PARAMETERS[name]
         except KeyError:
@@ -169,9 +219,11 @@ class RespeakerInterface(object):
             response = self.dev.ctrl_transfer(
                 usb.util.CTRL_IN | usb.util.CTRL_TYPE_VENDOR | usb.util.CTRL_RECIPIENT_DEVICE,
                 0, cmd, id, length, self.TIMEOUT)
+            self._connected = True
         except usb.core.USBError as e:
-            rospy.logerr(e)
-            rospy.signal_shutdown('Shutdown this node because of USBError')
+            rospy.logerr("Respeaker is not connected. {}".format(str(e)))
+            self._connected = False
+            return
 
         if sys.version_info.major == 2:
             response = struct.unpack(b'ii', response.tostring())
@@ -186,16 +238,34 @@ class RespeakerInterface(object):
         return result
 
     def set_led_think(self):
-        self.pixel_ring.set_brightness(10)
-        self.pixel_ring.think()
+        self.reconnect()
+        try:
+            self.pixel_ring.set_brightness(10)
+            self.pixel_ring.think()
+            self._connected = True
+        except usb.core.USBError as e:
+            rospy.logerr(str(e))
+            self._connected = False
 
     def set_led_trace(self):
-        self.pixel_ring.set_brightness(20)
-        self.pixel_ring.trace()
+        self.reconnect()
+        try:
+            self.pixel_ring.set_brightness(20)
+            self.pixel_ring.trace()
+            self._connected = True
+        except usb.core.USBError as e:
+            rospy.logerr(str(e))
+            self._connected = False
 
     def set_led_color(self, r, g, b, a):
-        self.pixel_ring.set_brightness(int(20 * a))
-        self.pixel_ring.set_color(r=int(r*255), g=int(g*255), b=int(b*255))
+        self.reconnect()
+        try:
+            self.pixel_ring.set_brightness(int(20 * a))
+            self.pixel_ring.set_color(r=int(r*255), g=int(g*255), b=int(b*255))
+            self._connected = True
+        except usb.core.USBError as e:
+            rospy.logerr(str(e))
+            self._connected = False
 
     def set_vad_threshold(self, db):
         self.write('GAMMAVAD_SR', db)
@@ -209,19 +279,28 @@ class RespeakerInterface(object):
 
     @property
     def version(self):
-        return self.dev.ctrl_transfer(
-            usb.util.CTRL_IN | usb.util.CTRL_TYPE_VENDOR | usb.util.CTRL_RECIPIENT_DEVICE,
-            0, 0x80, 0, 1, self.TIMEOUT)[0]
+        self.reconnect()
+        try:
+            value = self.dev.ctrl_transfer(
+                usb.util.CTRL_IN | usb.util.CTRL_TYPE_VENDOR | usb.util.CTRL_RECIPIENT_DEVICE,
+                0, 0x80, 0, 1, self.TIMEOUT)[0]
+            self._connected = True
+            return value
+        except usb.core.USBError as e:
+            rospy.logerr(str(e))
+            self._connected = False
 
     def close(self):
         """
         close the interface
         """
+        self._connected = False
         usb.util.dispose_resources(self.dev)
 
 
 class RespeakerAudio(object):
-    def __init__(self, on_audio, channel=0, suppress_error=True):
+    def __init__(self, on_audio, channel=0, suppress_error=True,
+                 connected=True):
         self.on_audio = on_audio
         with ignore_stderr(enable=suppress_error):
             self.pyaudio = pyaudio.PyAudio()
@@ -231,6 +310,15 @@ class RespeakerAudio(object):
         self.rate = 16000
         self.bitwidth = 2
         self.bitdepth = 16
+
+        self.stream = None
+        if connected:
+            self.reconnect(start=False)
+
+    def reconnect(self, start=True):
+        self.stop()
+        if self.stream:
+            self.stream.close()
 
         # find device
         count = self.pyaudio.get_device_count()
@@ -255,9 +343,8 @@ class RespeakerAudio(object):
             rospy.logwarn("%d channel is found for respeaker" % self.channels)
             rospy.logwarn("You may have to update firmware.")
         self.channel = min(self.channels - 1, max(0, self.channel))
-
         self.stream = self.pyaudio.open(
-            input=True, start=False,
+            input=True, start=start,
             format=pyaudio.paInt16,
             channels=self.channels,
             rate=self.rate,
@@ -290,11 +377,11 @@ class RespeakerAudio(object):
         return None, pyaudio.paContinue
 
     def start(self):
-        if self.stream.is_stopped():
+        if self.stream and self.stream.is_stopped():
             self.stream.start_stream()
 
     def stop(self):
-        if self.stream.is_active():
+        if self.stream and self.stream.is_active():
             self.stream.stop_stream()
 
 
@@ -327,7 +414,9 @@ class RespeakerNode(object):
         self.config = None
         self.dyn_srv = Server(RespeakerConfig, self.on_config)
         # start
-        self.respeaker_audio = RespeakerAudio(self.on_audio, suppress_error=suppress_pyaudio_error)
+        self.respeaker_audio = RespeakerAudio(
+            self.on_audio, suppress_error=suppress_pyaudio_error,
+            connected=self.respeaker.connected)
         self.speech_prefetch_bytes = int(
             self.speech_prefetch * self.respeaker_audio.rate * self.respeaker_audio.bitdepth / 8.0)
         self.speech_prefetch_buffer = b""
@@ -336,6 +425,8 @@ class RespeakerNode(object):
                                       self.on_timer)
         self.timer_led = None
         self.sub_led = rospy.Subscriber("status_led", ColorRGBA, self.on_status_led)
+
+        self.init_diagnostic()
 
     def on_shutdown(self):
         try:
@@ -355,7 +446,10 @@ class RespeakerNode(object):
         if self.config is None:
             # first get value from device and set them as ros parameters
             for name in config.keys():
-                config[name] = self.respeaker.read(name)
+                value = self.respeaker.read(name, exec_reconnect=False)
+                if value is None:
+                    continue
+                config[name] = value
         else:
             # if there is different values, write them to device
             for name, value in config.items():
@@ -386,7 +480,17 @@ class RespeakerNode(object):
     def on_timer(self, event):
         stamp = event.current_real or rospy.Time.now()
         is_voice = self.respeaker.is_voice()
-        doa_rad = math.radians(self.respeaker.direction - 180.0)
+        if is_voice is None:
+            return
+        if self.respeaker._need_reconnect:
+            self.respeaker_audio.reconnect()
+            self.speech_prefetch_buffer = b""
+            self.respeaker._need_reconnect = False
+
+        direction = self.respeaker.direction
+        if direction is None:
+            return
+        doa_rad = math.radians(direction - 180.0)
         doa_rad = angles.shortest_angular_distance(
             doa_rad, math.radians(self.doa_yaw_offset))
         doa = int(math.degrees(doa_rad))
@@ -428,6 +532,39 @@ class RespeakerNode(object):
             if self.speech_min_duration <= duration < self.speech_max_duration:
 
                 self.pub_speech_audio.publish(AudioData(data=buf))
+
+    def init_diagnostic(self):
+        self.diagnostic_updater = diagnostic_updater.Updater()
+        self.diagnostic_updater.setHardwareID("none")
+        self.diagnostic_updater.add(rospy.get_name(), self.update_diagnostic)
+        diagnostic_update_interval = rospy.get_param(
+            '~diagnostic_update_interval', 1.0)
+
+        timer_kwargs = dict(
+            period=rospy.Duration(diagnostic_update_interval),
+            callback=self.timer_callback,
+            oneshot=False,
+        )
+        if (LooseVersion(pkg_resources.get_distribution('rospy').version) >=
+                LooseVersion('1.12.0')):
+            # on >=kinetic, it raises ROSTimeMovedBackwardsException
+            # when we use rosbag play --loop.
+            timer_kwargs['reset'] = True
+        self.timer = rospy.Timer(**timer_kwargs)
+
+    def timer_callback(self, timer_event):
+        self.diagnostic_updater.update()
+
+    def update_diagnostic(self, stat):
+        if self.respeaker.connected:
+            stat.summary(
+                DiagnosticStatus.OK,
+                'respaker node {} is running.'.format(rospy.get_name()))
+        else:
+            stat.summary(
+                DiagnosticStatus.ERROR,
+                'respaker node {} is not connected.'.format(
+                    rospy.get_name()))
 
 
 if __name__ == '__main__':

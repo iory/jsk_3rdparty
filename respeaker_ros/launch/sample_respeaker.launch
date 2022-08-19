@@ -20,6 +20,7 @@
 
   <node if="$(arg launch_respeaker)"
         name="respeaker_node" pkg="respeaker_ros" type="respeaker_node.py"
+        output="screen"
         respawn="true" respawn_delay="10" />
 
   <node if="$(arg launch_soundplay)"
@@ -35,4 +36,16 @@
       tts_tolerance: 0.5
     </rosparam>
   </node>
+
+  <!-- Publish /diagnostics_agg -->
+  <node name="diagnostic_aggregator"
+        pkg="diagnostic_aggregator" type="aggregator_node"
+        clear_params="true" >
+  </node>
+
+  <!-- Visualize diagnostic aggregator -->
+  <node
+        name="rqt_robot_monitor" pkg="rqt_robot_monitor" type="rqt_robot_monitor" />
+
+
 </launch>

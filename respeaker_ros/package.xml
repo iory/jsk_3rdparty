@@ -11,6 +11,7 @@
   <build_depend>dynamic_reconfigure</build_depend>
   <exec_depend>angles</exec_depend>
   <exec_depend>audio_common_msgs</exec_depend>
+  <exec_depend>diagnostic_updater</exec_depend>
   <exec_depend>dynamic_reconfigure</exec_depend>
   <exec_depend>flac</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
