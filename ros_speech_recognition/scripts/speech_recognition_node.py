@@ -6,7 +6,6 @@ import actionlib
 import rospy
 import speech_recognition as SR
 from ros_speech_recognition.recognize_google_cloud import RecognizerEx
-import ros_speech_recognition.recognize_vosk
 import json
 import array
 import sys
@@ -280,6 +279,7 @@ class ROSSpeechRecognition(object):
         elif self.engine == Config.SpeechRecognition_Vosk:
             if not self.args:
                 self.args = {'model_path': rospy.get_param('~vosk_model_path', None)}
+            import ros_speech_recognition.recognize_vosk
             recog_func = self.recognizer.recognize_vosk
 
         return recog_func(audio_data=audio, language=self.language, **self.args)
