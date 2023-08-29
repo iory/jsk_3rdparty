@@ -12,6 +12,7 @@
   <arg name="language" default="en-US" doc="Speech to text language. For Japanese, set ja-JP." />
   <arg name="continuous" default="true" doc="If false, /speech_recognition service is published. If true, /speech_to_text topic is published." />
   <arg name="auto_start" default="true" doc="Whether speech_recognition starts automatically or not. This parameter works when continuous is true" />
+  <arg name="dynamic_energy_ratio" default="1.0" />
 
   <arg name="self_cancellation" default="true" doc="Do not recognize the audio when robot is speaking or not." />
   <arg name="tts_tolerance" default="1.0" doc="Tolerance second for recognizing whether robot is speaking or not" />
@@ -41,6 +42,7 @@
   <node name="speech_recognition"
         pkg="ros_speech_recognition" type="speech_recognition_node.py"
         respawn="true"
+        clear_params="true"
         output="screen">
     <rosparam subst_value="true">
       audio_topic: $(arg audio_topic)
@@ -56,6 +58,7 @@
       self_cancellation: $(arg self_cancellation)
       tts_tolerance: $(arg tts_tolerance)
       tts_action_names: $(arg tts_action_names)
+      dynamic_energy_ratio: $(arg dynamic_energy_ratio)
     </rosparam>
   </node>
 
