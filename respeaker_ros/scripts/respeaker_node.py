@@ -46,7 +46,7 @@ class RespeakerNode(object):
         self.sub_led = rospy.Subscriber("status_led", ColorRGBA, self.on_status_led)
 
         info_msg = AudioInfo(
-            channels=1,
+            channels=self.respeaker_audio.channels,
             sample_rate=self.respeaker_audio.rate,
             sample_format='S16LE',
             bitrate=self.respeaker_audio.rate * self.respeaker_audio.bitdepth,
