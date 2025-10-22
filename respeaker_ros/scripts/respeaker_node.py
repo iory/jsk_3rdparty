@@ -30,6 +30,7 @@ class RespeakerNode(object):
         self.pub_doa = rospy.Publisher("sound_localization", PoseStamped, queue_size=1, latch=True)
         self.pub_audio = rospy.Publisher("audio", AudioData, queue_size=10)
         self.pub_speech_audio = rospy.Publisher("speech_audio", AudioData, queue_size=10)
+        self.pub_audio_info = rospy.Publisher("audio_info", AudioInfo, queue_size=1, latch=True)
         # init config
         self.config = None
         self.dyn_srv = Server(RespeakerConfig, self.on_config)
@@ -43,6 +44,14 @@ class RespeakerNode(object):
                                       self.on_timer)
         self.timer_led = None
         self.sub_led = rospy.Subscriber("status_led", ColorRGBA, self.on_status_led)
+
+        info_msg = AudioInfo(
+            channels=1,
+            sample_rate=self.respeaker_audio.rate,
+            sample_format='S16LE',
+            bitrate=self.respeaker_audio.rate * self.respeaker_audio.bitdepth,
+            coding_format='WAVE')
+        self.pub_audio_info.publish(info_msg)
 
     def on_shutdown(self):
         self.info_timer.shutdown()
