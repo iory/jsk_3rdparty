@@ -12,6 +12,7 @@ import struct
 import sys
 import time
 from audio_common_msgs.msg import AudioData
+from audio_common_msgs.msg import AudioInfo
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool, Int32, ColorRGBA
 from dynamic_reconfigure.server import Server
