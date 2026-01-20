@@ -22,6 +22,8 @@
 
   <exec_depend>python3</exec_depend>
   <exec_depend>sound_play</exec_depend>
+  <exec_depend>jq</exec_depend>
+  <exec_depend>curl</exec_depend>
 
   <export>
     <pip_requirements>requirements.txt</pip_requirements>
