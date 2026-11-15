@@ -276,6 +276,9 @@ The following is an example of speech recognition using `GoogleCloudStream`.
   Whether the node recognize the sound heard when `~tts_action_names` is running or not.
 
   This options is for ignoring self voice sounds from recognition.
+  While one of `~tts_action_names` is running and for `~tts_tolerance` seconds after,
+  the audio input is replaced by silence before it reaches the recognizer,
+  so a phrase never contains the robot's voice even when the phrase ends long after the speech.
 
 * `~tts_action_names` (`List[String]`, default: `['sound_play']`)
 

@@ -68,10 +68,13 @@ def resolve_sound_signal_path(path):
 class ROSAudio(SR.AudioSource):
     def __init__(self, topic_name="audio", depth=16, n_channel=1,
                  sample_rate=16000, chunk_size=1024, buffer_size=10240,
-                 node=None):
+                 node=None, is_muted=None):
         assert buffer_size > chunk_size
 
         self.node = node
+        # callable returning True while the input should be replaced by
+        # silence (the robot is speaking), or None
+        self.is_muted = is_muted
         self.topic_name = topic_name
         self.buffer_size = buffer_size
 
@@ -96,7 +99,7 @@ class ROSAudio(SR.AudioSource):
             self.stream = None
         self.stream = ROSAudio.AudioStream(
             self.topic_name, self.buffer_size, depth=self.SAMPLE_WIDTH*8,
-            n_channel=self.n_channel, node=self.node)
+            n_channel=self.n_channel, node=self.node, is_muted=self.is_muted)
         return self
 
     def close(self):
@@ -111,8 +114,9 @@ class ROSAudio(SR.AudioSource):
 
     class AudioStream(object):
         def __init__(self, topic_name, buffer_size=10240, depth=16,
-                     n_channel=1, target_channel=0, node=None):
+                     n_channel=1, target_channel=0, node=None, is_muted=None):
             self.node = node
+            self.is_muted = is_muted
             self.buffer_size = buffer_size
             self.lock = Lock()
             self.buffer = bytes()
@@ -152,6 +156,14 @@ class ROSAudio(SR.AudioSource):
                 # take out target_channel channel data from multi channel data
                 data = array.array(dtype, bytes(msg.data)).tolist()
                 chan_data = data[self.target_channel::self.n_channel]
+                # Replace the input by silence while the robot is speaking,
+                # instead of dropping it: the recognizer then ends a phrase
+                # in progress as usual, and never hears the robot's voice.
+                # Checking only the finished phrase (audio_cb of
+                # ROSSpeechRecognition) is too late when the phrase ends
+                # more than ~tts_tolerance after the speech.
+                if self.is_muted is not None and self.is_muted():
+                    chan_data = [0] * len(chan_data)
                 self.buffer += array_to_bytes(array.array(dtype, chan_data))
                 overflow = len(self.buffer) - self.buffer_size
                 if overflow > 0:
@@ -169,7 +181,8 @@ class ROSSpeechRecognition(object):
                               n_channel=ros_compat.get_param(node, "~n_channel", 1),
                               sample_rate=ros_compat.get_param(node, "~sample_rate", 16000),
                               buffer_size=ros_compat.get_param(node, "~buffer_size", 10240),
-                              node=node)
+                              node=node,
+                              is_muted=lambda: self.is_canceling)
 
         # initialize sound play client
         if ros_compat.get_param(node, '~enable_sound_effect', True):
@@ -610,6 +623,9 @@ class ROSSpeechRecognition(object):
         if active:
             if not self.is_canceling:
                 ros_compat.logdebug(self.node, "START CANCELLATION")
+                # the input is silence while canceling: do not let the
+                # recognizer lower its energy threshold to it
+                self.recognizer.dynamic_energy_threshold = False
                 self.is_canceling = True
                 self.last_tts = None
         elif self.is_canceling:
@@ -618,6 +634,7 @@ class ROSSpeechRecognition(object):
             if stamp - self.last_tts > self.tts_tolerance:
                 ros_compat.logdebug(self.node, "END CANCELLATION")
                 self.is_canceling = False
+                self.recognizer.dynamic_energy_threshold = self.dynamic_energy_threshold
 
 
 if __name__ == '__main__':
